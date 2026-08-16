@@ -1,5 +1,6 @@
 --============================================================
--- VOID HUB - ULTIMATE CUSTOM EDITION (صور اللاعبين + الرادار الآمن + الانتقال)
+-- VOID HUB - ULTIMATE MM2 MASTER EDITION
+-- (MUSIC PLAYER, FLY, INFINITE JUMP, ESP RADAR, CAMERA LOCK, SPEED CONTROLLER)
 --============================================================
 
 local Players = game:GetService("Players")
@@ -13,29 +14,7 @@ local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
 
 --============================================================
--- نظام منع الطرد (Anti-Kick خفيف وصامت داخلياً)
---============================================================
-task.spawn(function()
-    pcall(function()
-        local mt = getrawmetatable(game)
-        if mt then
-            setreadonly(mt, false)
-            local oldNamecall = mt.__namecall
-            mt.__namecall = function(self, ...)
-                local args = {...}
-                local method = getnamecallmethod()
-                if method and method:lower() == "kick" and self == player then
-                    return nil
-                end
-                return oldNamecall(self, ...)
-            end
-            setreadonly(mt, true)
-        end
-    end)
-end)
-
---============================================================
--- 1. إعدادات الإنترو والموسيقى
+-- 1. إعدادات الإنترو والموسيقى (الأيدي الأساسي المرفق)
 --============================================================
 
 local DEFAULT_MUSIC_ID = "82757474758500"
@@ -51,13 +30,29 @@ for _, name in ipairs({"VoidHubIntro", "VoidHubMainUI"}) do
 	if old then old:Destroy() end
 end
 
-local imageIndex = math.random(1, #IMAGES)
+local lastImage = shared.VoidHub_LastImage
+local imageIndex
+if not shared.VoidHub_Run then
+	shared.VoidHub_Run = 1
+	imageIndex = 2
+elseif shared.VoidHub_Run == 1 then
+	shared.VoidHub_Run = 2
+	imageIndex = 1
+else
+	local choices = {}
+	for i = 1, #IMAGES do
+		if i ~= lastImage then table.insert(choices, i) end
+	end
+	imageIndex = choices[math.random(1, #choices)]
+end
+shared.VoidHub_LastImage = imageIndex
 local IMAGE_ID = IMAGES[imageIndex]
 
 local introActive = true
 local introFinished = false
 local backgroundMusic = nil
 
+-- واجهة الإنترو البصرية
 local gui = Instance.new("ScreenGui")
 gui.Name = "VoidHubIntro"
 gui.IgnoreGuiInset = true
@@ -117,6 +112,14 @@ skipStroke.Transparency = 0.75
 skipStroke.Thickness = 1
 skipStroke.Parent = skip
 
+local flash = Instance.new("Frame")
+flash.Size = UDim2.fromScale(1, 1)
+flash.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+flash.BackgroundTransparency = 1
+flash.BorderSizePixel = 0
+flash.ZIndex = 400
+flash.Parent = gui
+
 local introTitle = Instance.new("TextLabel")
 introTitle.AnchorPoint = Vector2.new(0.5, 0.5)
 introTitle.Position = UDim2.fromScale(0.5, 0.5)
@@ -141,7 +144,7 @@ introSubtitle.AnchorPoint = Vector2.new(0.5, 0.5)
 introSubtitle.Position = UDim2.fromScale(0.5, 0.59)
 introSubtitle.Size = UDim2.fromScale(0.6, 0.05)
 introSubtitle.BackgroundTransparency = 1
-introSubtitle.Text = "ULTIMATE PLAYER RADAR & TP"
+introSubtitle.Text = "MM2 ULTIMATE MASTER"
 introSubtitle.TextColor3 = Color3.fromRGB(205, 205, 205)
 introSubtitle.TextTransparency = 1
 introSubtitle.TextScaled = true
@@ -150,7 +153,7 @@ introSubtitle.ZIndex = 20
 introSubtitle.Parent = background
 
 --============================================================
--- 2. واجهة التحكم الرئيسية
+-- 2. المنيو الرئيسية الكاملة (تحتوي على زر تعلية وتوطية السرعة، رادار بعيد المدى، وكاميرا لوك للمجرم)
 --============================================================
 
 local function createVoidHubMainUI()
@@ -160,7 +163,7 @@ local function createVoidHubMainUI()
 	mainGui.Parent = PlayerGui
 
 	local mainFrame = Instance.new("Frame")
-	mainFrame.Size = UDim2.fromOffset(360, 680)
+	mainFrame.Size = UDim2.fromOffset(340, 680)
 	mainFrame.Position = UDim2.fromScale(0.1, 0.06)
 	mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	mainFrame.BorderSizePixel = 0
@@ -175,10 +178,10 @@ local function createVoidHubMainUI()
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-	title.Text = "VOID HUB - PLAYER RADAR & TP"
+	title.Text = "VOID HUB - ULTIMATE MM2"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
-	title.TextSize = 13
+	title.TextSize = 14
 	title.Parent = mainFrame
 
 	local titleCorner = Instance.new("UICorner")
@@ -221,58 +224,46 @@ local function createVoidHubMainUI()
 		return box
 	end
 
-	-- الأزرار الأساسية
-	local flyBtn = createButton("Toggle Safe Fly (طيران آمن مانع للكيك): OFF", 45)
+	-- الأزرار الرئيسية في القائمة
+	local flyBtn = createButton("Toggle Fly: OFF", 45)
 	local noclipBtn = createButton("Toggle Noclip: OFF", 78)
-	local radarBtn = createButton("Player Image & Distance Radar (رادار الصور والأمتار): OFF", 111)
-	
-	-- قسم الانتقال بأول 3 أحرف (أو أول حرفين)
-	local tpTitle = Instance.new("TextLabel")
-	tpTitle.Size = UDim2.new(0.9, 0, 0, 20)
-	tpTitle.Position = UDim2.new(0.05, 0, 0, 146)
-	tpTitle.BackgroundTransparency = 1
-	tpTitle.Text = "--- Teleport (اكتب أول 3 حروف من اسم اللاعب) ---"
-	tpTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
-	tpTitle.Font = Enum.Font.GothamBold
-	tpTitle.TextSize = 11
-	tpTitle.Parent = mainFrame
+	local infJumpBtn = createButton("Infinite Jump (القفز اللانهائي): OFF", 111)
+	local touchFlingBtn = createButton("Touch Fling (طرد باللمس): OFF", 144)
+	local mm2RadarBtn = createButton("MM2 Long-Range Radar (رادار بعيد المدى): OFF", 177)
+	local lockMurdererBtn = createButton("Lock on Murderer (كاميرا لوك على المجرم): OFF", 210)
 
-	local targetBox = createTextBox("اكتب أول 3 حروف من الاسم هنا...", 168)
-	local tpBtn = createButton("الانتقال الفوري لعند الولد (Teleport)", 203)
-	tpBtn.BackgroundColor3 = Color3.fromRGB(70, 40, 100)
-
-	-- قسم التحكم بالسرعة (زيادة وإنقاص بحرية)
+	-- قسم التحكم بالسرعة (توسيع وتقليل السرعة بدقة دون إثقال الجهاز)
 	local speedTitle = Instance.new("TextLabel")
 	speedTitle.Size = UDim2.new(0.9, 0, 0, 20)
-	speedTitle.Position = UDim2.new(0.05, 0, 0, 240)
+	speedTitle.Position = UDim2.new(0.05, 0, 0, 243)
 	speedTitle.BackgroundTransparency = 1
-	speedTitle.Text = "--- Speed Controller (زيادة ونقصان السرعة) ---"
+	speedTitle.Text = "--- Speed Controller (تحكم السرعة) ---"
 	speedTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 	speedTitle.Font = Enum.Font.GothamBold
 	speedTitle.TextSize = 11
 	speedTitle.Parent = mainFrame
 
-	local speedUpBtn = createButton("زيادة السرعة (+ Speed)", 263)
+	local speedUpBtn = createButton("زيادة السرعة (+ Speed)", 266)
 	speedUpBtn.BackgroundColor3 = Color3.fromRGB(40, 100, 40)
-	local speedDownBtn = createButton("تقليل السرعة (- Speed)", 297)
+	local speedDownBtn = createButton("تقليل السرعة (- Speed)", 300)
 	speedDownBtn.BackgroundColor3 = Color3.fromRGB(100, 40, 40)
 
-	-- قسم مشغل الموسيقى
+	-- قسم قائمة الأغاني (Music Hub) والأيدي المطلوب
 	local musicTitle = Instance.new("TextLabel")
 	musicTitle.Size = UDim2.new(0.9, 0, 0, 20)
-	musicTitle.Position = UDim2.new(0.05, 0, 0, 332)
+	musicTitle.Position = UDim2.new(0.05, 0, 0, 335)
 	musicTitle.BackgroundTransparency = 1
-	musicTitle.Text = "--- Music Player Hub ---"
+	musicTitle.Text = "--- Music Player Hub (قائمة الأغاني) ---"
 	musicTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 	musicTitle.Font = Enum.Font.GothamBold
 	musicTitle.TextSize = 11
 	musicTitle.Parent = mainFrame
 
-	local musicBox = createTextBox("اكتب أيدي الأغنية هنا...", 355)
+	local musicBox = createTextBox("اكتب أيدي الأغنية هنا...", 358)
 	musicBox.Text = DEFAULT_MUSIC_ID
 
-	local playCustomBtn = createButton("تشغيل الأغنية المكتوبة (Play ID)", 390)
-	local stopMusicBtn = createButton("إيقاف الأغنية (Stop Music)", 425)
+	local playCustomBtn = createButton("تشغيل الأغنية المكتوبة (Play ID)", 393)
+	local stopMusicBtn = createButton("إيقاف الأغنية (Stop Music)", 428)
 	stopMusicBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
 
 	local closeBtn = createButton("Close Menu", 635)
@@ -283,33 +274,51 @@ local function createVoidHubMainUI()
 	end)
 
 	--============================================================
-	-- تنفيذ السكربتات المخصصة
+	-- تنفيذ وظائف السكربتات داخل اللعبة
 	--============================================================
 
-	-- 1. الطيران الآمن المانع للكيك (Micro-CFrame)
+	-- 1. الطيران (Fly)
 	local flying = false
-	local fspeed = 1.2
+	local fspeed = 60
+	local bg, bv
 
 	flyBtn.MouseButton1Click:Connect(function()
 		flying = not flying
-		flyBtn.Text = "Toggle Safe Fly: " .. (flying and "ON" or "OFF")
-	end)
+		flyBtn.Text = "Toggle Fly: " .. (flying and "ON" or "OFF")
+		local char = player.Character
+		if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+		local hrp = char.HumanoidRootPart
+		
+		if flying then
+			bg = Instance.new("BodyGyro")
+			bg.P = 9e4
+			bg.maxTorque = Vector3.new(9e4, 9e4, 9e4)
+			bg.cframe = hrp.CFrame
+			bg.Parent = hrp
 
-	RunService.RenderStepped:Connect(function(dt)
-		if flying and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			local hrp = player.Character.HumanoidRootPart
-			local cam = workspace.CurrentCamera
-			local moveDirection = Vector3.new()
-			
-			if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + cam.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - cam.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - cam.CFrame.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + cam.CFrame.RightVector end
-			
-			if moveDirection.Magnitude > 0 then
-				hrp.CFrame = hrp.CFrame + (moveDirection.Unit * fspeed * 2)
-				hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			end
+			bv = Instance.new("BodyVelocity")
+			bv.velocity = Vector3.new(0, 0, 0)
+			bv.maxForce = Vector3.new(9e4, 9e4, 9e4)
+			bv.Parent = hrp
+
+			task.spawn(function()
+				while flying and char and char:FindFirstChild("Humanoid") do
+					local cam = workspace.CurrentCamera
+					local vel = Vector3.new()
+					if UserInputService:IsKeyDown(Enum.KeyCode.W) then vel = vel + cam.CoordinateFrame.LookVector end
+					if UserInputService:IsKeyDown(Enum.KeyCode.S) then vel = vel - cam.CoordinateFrame.LookVector end
+					if UserInputService:IsKeyDown(Enum.KeyCode.A) then vel = vel - cam.CoordinateFrame.RightVector end
+					if UserInputService:IsKeyDown(Enum.KeyCode.D) then vel = vel + cam.CoordinateFrame.RightVector end
+					bv.velocity = vel * fspeed
+					bg.cframe = cam.CoordinateFrame
+					RunService.RenderStepped:Wait()
+				end
+				if bg then bg:Destroy() end
+				if bv then bv:Destroy() end
+			end)
+		else
+			if bg then bg:Destroy() end
+			if bv then bv:Destroy() end
 		end
 	end)
 
@@ -328,120 +337,38 @@ local function createVoidHubMainUI()
 		end
 	end)
 
-	-- 3. رادار الأمتار + عرض صورة الولد فوق رأسه مباشرة مع اسمه والمسافة
-	local radarActive = false
-	local espBillboards = {}
+	-- 3. القفز اللانهائي (Infinite Jump)
+	local infJumpEnabled = false
+	infJumpBtn.MouseButton1Click:Connect(function()
+		infJumpEnabled = not infJumpEnabled
+		infJumpBtn.Text = "Infinite Jump: " .. (infJumpEnabled and "ON" or "OFF")
+	end)
 
-	radarBtn.MouseButton1Click:Connect(function()
-		radarActive = not radarActive
-		radarBtn.Text = "Player Image & Distance Radar: " .. (radarActive and "ON" or "OFF")
-
-		if not radarActive then
-			for _, b in pairs(espBillboards) do if b then b:Destroy() end end
-			espBillboards = {}
+	UserInputService.JumpRequest:Connect(function()
+		if infJumpEnabled and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+			player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 		end
 	end)
 
-	task.spawn(function()
-		while true do
-			if radarActive and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-				local myPos = player.Character.HumanoidRootPart.Position
-				for _, p in pairs(Players:GetPlayers()) do
-					if p ~= player and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("HumanoidRootPart") then
-						local char = p.Character
-						local head = char.Head
-						local hrp = char.HumanoidRootPart
-						local distance = math.floor((hrp.Position - myPos).Magnitude)
+	-- 4. طرد اللاعبين باللمس (Touch Fling)
+	local flingEnabled = false
+	touchFlingBtn.MouseButton1Click:Connect(function()
+		flingEnabled = not flingEnabled
+		touchFlingBtn.Text = "Touch Fling: " .. (flingEnabled and "ON" or "OFF")
+	end)
 
-						-- جلب صورة اللاعب (Avatar Thumbnail)
-						local success, content = pcall(function()
-							return Players:GetUserThumbnailAsync(p.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size42x42)
-						end)
-						local thumbUrl = success and content or ""
-
-						local billboard = head:FindFirstChild("VoidPlayerRadarTag")
-						if not billboard then
-							billboard = Instance.new("BillboardGui")
-							billboard.Name = "VoidPlayerRadarTag"
-							billboard.Size = UDim2.fromOffset(140, 60)
-							billboard.StudsOffset = Vector3.new(0, 3, 0)
-							billboard.AlwaysOnTop = true
-							billboard.Parent = head
-							espBillboards[p] = billboard
-
-							-- صورة الولد
-							local imgLabel = Instance.new("ImageLabel")
-							imgLabel.Name = "PlayerImage"
-							imgLabel.Size = UDim2.fromOffset(36, 36)
-							imgLabel.Position = UDim2.new(0.5, -18, 0, 0)
-							imgLabel.BackgroundTransparency = 1
-							imgLabel.Image = thumbUrl
-							imgLabel.Parent = billboard
-
-							local imgCorner = Instance.new("UICorner")
-							imgCorner.CornerRadius = UDim.new(1, 0)
-							imgCorner.Parent = imgLabel
-
-							-- النص (الاسم والمسافة بالأمتار)
-							local txt = Instance.new("TextLabel")
-							txt.Name = "TagText"
-							txt.Size = UDim2.new(1, 0, 0, 20)
-							txt.Position = UDim2.new(0, 0, 0, 38)
-							txt.BackgroundTransparency = 1
-							txt.TextScaled = true
-							txt.Font = Enum.Font.GothamBold
-							txt.TextColor3 = Color3.fromRGB(0, 255, 255)
-							txt.TextStrokeTransparency = 0
-							txt.Parent = billboard
-						end
-
-						local txtLabel = billboard:FindFirstChild("TagText")
-						if txtLabel then
-							txtLabel.Text = p.Name .. " [" .. distance .. "m]"
-						end
-					end
-				end
-			end
-			task.wait(0.4)
+	RunService.Heartbeat:Connect(function()
+		if flingEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = player.Character.HumanoidRootPart
+			local vel = hrp.Velocity
+			hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
+			RunService.RenderStepped:Wait()
+			hrp.Velocity = vel
 		end
 	end)
 
-	-- 4. زر الانتقال (Teleport) بأول 3 أحرف من اسم الولد
-	tpBtn.MouseButton1Click:Connect(function()
-		local query = string.lower(targetBox.Text)
-		if query == "" then return end
-		local targetPlayer = nil
-		
-		for _, p in pairs(Players:GetPlayers()) do
-			if p ~= player then
-				local pName = string.lower(p.Name)
-				local pDisplayName = string.lower(p.DisplayName)
-				-- التحقق من أول 3 أحرف أو الاسم كاملاً
-				if pName:sub(1, #query) == query or pDisplayName:sub(1, #query) == query or pName:find(query) then
-					targetPlayer = p
-					break
-				end
-			end
-		end
-
-		if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-				player.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
-				tpBtn.Text = "Done! Teleported to " .. targetPlayer.Name
-				task.delay(2, function()
-					tpBtn.Text = "الانتقال الفوري لعند الولد (Teleport)"
-				end)
-			end
-		else
-			tpBtn.Text = "Player Not Found!"
-			task.delay(2, function()
-				tpBtn.Text = "الانتقال الفوري لعند الولد (Teleport)"
-			end)
-		end
-	end)
-
-	-- 5. نظام السرعة (زيادة ونقصان السرعة بحرية)
-	local currentSpeedMultiplier = 16
+	-- 5. نظام السرعة القابل للزيادة والتنقيص (Speed Controller)
+	local currentSpeedMultiplier = 16 -- السرعة الافتراضية للعبة
 	speedUpBtn.MouseButton1Click:Connect(function()
 		currentSpeedMultiplier = currentSpeedMultiplier + 4
 		speedUpBtn.Text = "Speed: " .. currentSpeedMultiplier
@@ -451,7 +378,7 @@ local function createVoidHubMainUI()
 		if currentSpeedMultiplier > 8 then
 			currentSpeedMultiplier = currentSpeedMultiplier - 4
 		end
-		speedUpBtn.Text = "Speed: " .. currentSpeedMultiplier
+		speedDownBtn.Text = "Speed: " .. currentSpeedMultiplier
 	end)
 
 	RunService.Heartbeat:Connect(function()
@@ -463,8 +390,141 @@ local function createVoidHubMainUI()
 		end
 	end)
 
-	-- 6. مشغل الأغاني
+	-- 6. رادار بعيد المدى وكشف اللاعبين فوق رؤوسهم بغض النظر عن المسافة (بدون إثقال الجهاز)
+	local mm2RadarActive = false
+	local espHighlights = {}
+	local espBillboards = {}
+
+	mm2RadarBtn.MouseButton1Click:Connect(function()
+		mm2RadarActive = not mm2RadarActive
+		mm2RadarBtn.Text = "MM2 Radar: " .. (mm2RadarActive and "ON" or "OFF")
+
+		if not mm2RadarActive then
+			for _, h in pairs(espHighlights) do if h then h:Destroy() end end
+			for _, b in pairs(espBillboards) do if b then b:Destroy() end end
+			espHighlights = {}
+			espBillboards = {}
+		end
+	end)
+
+	local function getMurderer()
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character then
+				local char = p.Character
+				local backpack = p:FindFirstChild("Backpack")
+				local function checkTool(tool)
+					if tool:IsA("Tool") then
+						local name = string.lower(tool.Name)
+						if name:find("knife") or name:find("blade") then return true end
+					end
+					return false
+				end
+				for _, t in pairs(char:GetChildren()) do if checkTool(t) then return p end end
+				if backpack then
+					for _, t in pairs(backpack:GetChildren()) do if checkTool(t) then return p end end
+				end
+			end
+		end
+		return nil
+	end
+
+	-- تحديث الرادار كل فترة وجيزة لتخفيف الضغط على الجهاز تماماً
+	task.spawn(function()
+		while true do
+			if mm2RadarActive then
+				for _, p in pairs(Players:GetPlayers()) do
+					if p ~= player and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("HumanoidRootPart") then
+						local char = p.Character
+						local head = char.Head
+						local role = "Innocent"
+						local backpack = p:FindFirstChild("Backpack")
+
+						local function checkTool(tool)
+							if tool:IsA("Tool") then
+								local name = string.lower(tool.Name)
+								if name:find("knife") or name:find("blade") then role = "Murderer"
+								elseif name:find("gun") or name:find("revolver") then role = "Sheriff" end
+							end
+						end
+						for _, t in pairs(char:GetChildren()) do checkTool(t) end
+						if backpack then for _, t in pairs(backpack:GetChildren()) do checkTool(t) end end
+
+						-- إبراز اللاعب (Highlight)
+						local highlight = char:FindFirstChild("VoidMM2Highlight")
+						if not highlight then
+							highlight = Instance.new("Highlight")
+							highlight.Name = "VoidMM2Highlight"
+							highlight.Parent = char
+							espHighlights[p] = highlight
+						end
+
+						-- لافتة الاسم والدور فوق الرأس (تظهر حتى لو كان اللاعب بعيداً جداً)
+						local billboard = head:FindFirstChild("VoidMM2Tag")
+						if not billboard then
+							billboard = Instance.new("BillboardGui")
+							billboard.Name = "VoidMM2Tag"
+							billboard.Size = UDim2.fromOffset(200, 50)
+							billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+							billboard.AlwaysOnTop = true
+							billboard.Parent = head
+							espBillboards[p] = billboard
+
+							local txt = Instance.new("TextLabel")
+							txt.Name = "TagText"
+							txt.Size = UDim2.fromScale(1, 1)
+							txt.BackgroundTransparency = 1
+							txt.TextScaled = true
+							txt.Font = Enum.Font.GothamBold
+							txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+							txt.TextStrokeTransparency = 0
+							txt.Parent = billboard
+						end
+
+						local txtLabel = billboard:FindFirstChild("TagText")
+						if txtLabel then
+							txtLabel.Text = p.Name .. " [" .. role .. "]"
+						end
+
+						if role == "Murderer" then
+							highlight.FillColor = Color3.fromRGB(255, 0, 0)
+							highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+							if txtLabel then txtLabel.TextColor3 = Color3.fromRGB(255, 0, 0) end
+						elseif role == "Sheriff" then
+							highlight.FillColor = Color3.fromRGB(0, 0, 255)
+							highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+							if txtLabel then txtLabel.TextColor3 = Color3.fromRGB(0, 150, 255) end
+						else
+							highlight.FillColor = Color3.fromRGB(0, 255, 0)
+							highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
+							if txtLabel then txtLabel.TextColor3 = Color3.fromRGB(0, 255, 0) end
+						end
+					end
+				end
+			end
+			task.wait(0.5) -- تحديث منخفض الاستهلاك للحفاظ على كفاءة وقوة الجهاز
+		end
+	end)
+
+	-- 7. كاميرا لوك على المجرم فقط (Camera Lock on Murderer)
+	local lockMurdererActive = false
+
+	lockMurdererBtn.MouseButton1Click:Connect(function()
+		lockMurdererActive = not lockMurdererActive
+		lockMurdererBtn.Text = "Lock on Murderer: " .. (lockMurdererActive and "ON" or "OFF")
+	end)
+
+	RunService.RenderStepped:Connect(function()
+		if lockMurdererActive then
+			local murderer = getMurderer()
+			if murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
+				Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, murderer.Character.HumanoidRootPart.Position)
+			end
+		end
+	end)
+
+	-- 8. إدارة وتشغيل الأغاني (Music Hub)
 	local activeMusic = nil
+
 	local function playMusicById(id)
 		if activeMusic then
 			pcall(function() activeMusic:Stop(); activeMusic:Destroy() end)
@@ -481,7 +541,7 @@ local function createVoidHubMainUI()
 	playCustomBtn.MouseButton1Click:Connect(function()
 		local customId = musicBox.Text ~= "" and musicBox.Text or DEFAULT_MUSIC_ID
 		playMusicById(customId)
-		playCustomBtn.Text = "Playing ID!"
+		playCustomBtn.Text = "Playing ID: " .. customId
 		task.delay(2, function()
 			playCustomBtn.Text = "تشغيل الأغنية المكتوبة (Play ID)"
 		end)
@@ -500,7 +560,7 @@ local function createVoidHubMainUI()
 end
 
 --============================================================
--- تشغيل الموسيقى والإنترو
+-- تشغيل الأغنية الافتراضية المطلوبة عند الإقلاع
 --============================================================
 
 task.spawn(function()
@@ -512,6 +572,10 @@ task.spawn(function()
 	backgroundMusic.Parent = SoundService
 	pcall(function() backgroundMusic:Play() end)
 end)
+
+--============================================================
+-- إنهاء الإنترو وفتح القائمة الرئيسية
+--============================================================
 
 local function finishIntro()
 	if introFinished then return end
@@ -536,6 +600,14 @@ end
 
 skip.MouseButton1Click:Connect(finishIntro)
 
+skip.MouseEnter:Connect(function()
+	TweenService:Create(skip, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(55, 55, 60)}):Play()
+end)
+
+skip.MouseLeave:Connect(function()
+	TweenService:Create(skip, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(15, 15, 18)}):Play()
+end)
+
 TweenService:Create(image, TweenInfo.new(1.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
 TweenService:Create(image, TweenInfo.new(18, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Size = UDim2.fromScale(1.18, 1.18)}):Play()
 
@@ -545,10 +617,28 @@ if not introActive then return end
 TweenService:Create(introTitle, TweenInfo.new(0.7, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.fromScale(0.9, 0.18), TextTransparency = 0}):Play()
 TweenService:Create(titleStroke, TweenInfo.new(0.5), {Transparency = 0}):Play()
 
-task.wait(1.5)
+task.wait(1)
+for i = 1, 18 do
+	if not introActive then return end
+	introTitle.Position = UDim2.fromScale(0.5 + math.random(-8, 8)/1000, 0.5 + math.random(-8, 8)/1000)
+	task.wait(0.025)
+end
+introTitle.Position = UDim2.fromScale(0.5, 0.5)
+
 TweenService:Create(introSubtitle, TweenInfo.new(0.6, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 
-task.wait(5)
+task.wait(7)
+if not introActive then return end
+
+for i = 1, 14 do
+	if not introActive then return end
+	flash.BackgroundTransparency = 0
+	task.wait(0.025)
+	flash.BackgroundTransparency = 1
+	task.wait(0.065)
+end
+
+task.wait(2)
 if not introActive then return end
 
 TweenService:Create(introTitle, TweenInfo.new(1.2, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
@@ -558,10 +648,18 @@ TweenService:Create(image, TweenInfo.new(1.5, Enum.EasingStyle.Quint, Enum.Easin
 TweenService:Create(dark, TweenInfo.new(1.5), {BackgroundTransparency = 1}):Play()
 
 if backgroundMusic and backgroundMusic.Parent then
-	pcall(function()
-		TweenService:Create(backgroundMusic, TweenInfo.new(1.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Volume = 0}):Play()
-	end)
+	TweenService:Create(backgroundMusic, TweenInfo.new(1.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Volume = 0}):Play()
 end
+
+local finalFade = Instance.new("Frame")
+finalFade.Size = UDim2.fromScale(1, 1)
+finalFade.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+finalFade.BackgroundTransparency = 1
+finalFade.BorderSizePixel = 0
+finalFade.ZIndex = 1000
+finalFade.Parent = gui
+
+TweenService:Create(finalFade, TweenInfo.new(1.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {BackgroundTransparency = 0}):Play()
 
 task.wait(1.6)
 finishIntro()
