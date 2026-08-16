@@ -1,5 +1,5 @@
 --============================================================
--- VOID HUB PRO - FINAL FIXED VERSION
+-- VOID HUB PRO - FINAL UPDATED VERSION WITH SONG & SKIP
 --============================================================
 
 local Players = game:GetService("Players")
@@ -8,32 +8,74 @@ local RunService = game:GetService("RunService")
 local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local LocalPlayer = Players.LocalPlayer
 
--- [1] أنترو خفيف وسريع (مش بيعلق)
+-- [1] أنترو احترافي طويل مع أغنية وزرار سكيب
 local function RunIntro()
     local success, err = pcall(function()
         local gui = Instance.new("ScreenGui", PlayerGui)
         gui.Name = "VoidIntro"
+        gui.IgnoreGuiInset = true
         
         local f = Instance.new("Frame", gui)
         f.Size = UDim2.fromScale(1,1)
-        f.BackgroundColor3 = Color3.fromRGB(0,0,0)
+        f.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
         
-        local t = Instance.new("TextLabel", f)
-        t.Size = UDim2.new(1,0,0.2,0)
-        t.Position = UDim2.new(0,0,0.4,0)
-        t.Text = "VOID HUB PRO - LOADING..."
-        t.TextColor3 = Color3.fromRGB(0, 255, 255)
-        t.TextSize = 35
-        t.Font = Enum.Font.GothamBold
-        t.BackgroundTransparency = 1
-        
-        -- تشغيل الصوت بأمان
+        -- تشغيل الأغنية/الموسيقى
         local s = Instance.new("Sound", f)
-        s.SoundId = "rbxassetid://184488349"
+        s.SoundId = "rbxassetid://184488349" -- موسيقى الأنترو
+        s.Volume = 2
         s:Play()
         
-        task.wait(2)
-        gui:Destroy()
+        local t = Instance.new("TextLabel", f)
+        t.Size = UDim2.new(1,0,0,100)
+        t.Position = UDim2.new(0,0,0.45,0)
+        t.Text = "VOID HUB PRO"
+        t.TextColor3 = Color3.fromRGB(0, 255, 255)
+        t.TextSize = 50
+        t.Font = Enum.Font.GothamBold
+        t.BackgroundTransparency = 1
+        t.TextTransparency = 1
+        
+        -- زرار السكيب (التخطي)
+        local skipBtn = Instance.new("TextButton", f)
+        skipBtn.Size = UDim2.new(0, 120, 0, 40)
+        skipBtn.Position = UDim2.new(0.85, 0, 0.9, 0)
+        skipBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+        skipBtn.Text = "Skip Intro ⏩"
+        skipBtn.TextColor3 = Color3.new(1,1,1)
+        skipBtn.Font = Enum.Font.GothamBold
+        skipBtn.TextSize = 14
+        Instance.new("UICorner", skipBtn)
+        
+        local skipped = false
+        skipBtn.MouseButton1Click:Connect(function()
+            skipped = true
+            s:Stop()
+            gui:Destroy()
+        end)
+        
+        -- ظهور تدريجي للكلمة
+        for i = 1, 0, -0.1 do
+            if skipped then return end
+            t.TextTransparency = i
+            task.wait(0.04)
+        end
+        
+        -- مدة الانتظار (الأنترو طويل شوية زي ما طلبت)
+        for i = 1, 40 do
+            if skipped then return end
+            task.wait(0.1)
+        end
+        
+        -- اختفاء تدريجي
+        for i = 0, 1, 0.1 do
+            if skipped then return end
+            t.TextTransparency = i
+            task.wait(0.03)
+        end
+        
+        if not skipped then
+            gui:Destroy()
+        end
     end)
     if not success then warn("Intro error: " .. tostring(err)) end
 end
@@ -75,7 +117,7 @@ local function createBtn(text, func)
     btnCount = btnCount + 1
 end
 
--- [4] إضافة الوظائف الأساسية
+-- [4] الوظائف
 createBtn("Spawn All Vehicles", function()
     pcall(function()
         local remotes = ReplicatedStorage:FindFirstChild("RemoteEvents") or ReplicatedStorage
@@ -87,18 +129,45 @@ createBtn("Spawn All Vehicles", function()
     end)
 end)
 
+-- الطيران المظبوط
+local flying = false
+local flyConnection
 createBtn("Toggle Fly", function()
     pcall(function()
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            if root:FindFirstChild("BodyVelocity") then
-                root.BodyVelocity:Destroy()
-            else
-                local bv = Instance.new("BodyVelocity", root)
-                bv.Name = "BodyVelocity"
-                bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                bv.Velocity = Vector3.new(0, 30, 0)
-            end
+        local character = LocalPlayer.Character
+        if not character then return end
+        local root = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not root or not humanoid then return end
+
+        flying = not flying
+        if flying then
+            humanoid.PlatformStand = true
+            local bv = Instance.new("BodyVelocity", root)
+            bv.Name = "VoidFlyVelocity"
+            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bv.Velocity = Vector3.new(0, 0, 0)
+            
+            local bg = Instance.new("BodyGyro", root)
+            bg.Name = "VoidFlyGyro"
+            bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            bg.CFrame = root.CFrame
+
+            flyConnection = RunService.RenderStepped:Connect(function()
+                if not flying or not root.Parent then return end
+                local cam = workspace.CurrentCamera
+                if humanoid.MoveDirection.Magnitude > 0 then
+                    bv.Velocity = cam.CFrame.LookVector * 50
+                else
+                    bv.Velocity = Vector3.new(0, 0.1, 0)
+                end
+                bg.CFrame = cam.CFrame
+            end)
+        else
+            if root:FindFirstChild("VoidFlyVelocity") then root.VoidFlyVelocity:Destroy() end
+            if root:FindFirstChild("VoidFlyGyro") then root.VoidFlyGyro:Destroy() end
+            if flyConnection then flyConnection:Disconnect() end
+            humanoid.PlatformStand = false
         end
     end)
 end)
@@ -123,7 +192,7 @@ createBtn("Play Background Music", function()
     end)
 end)
 
--- [5] كتابة حالة المفتاح في الأسفل (3 أيام)
+-- [5] الفوتر
 local footer = Instance.new("TextLabel", frame)
 footer.Size = UDim2.new(1,0,0,30)
 footer.Position = UDim2.new(0,0,0.92,0)
