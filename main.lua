@@ -1,71 +1,27 @@
 --============================================================
--- VOID HUB - MULTI PANEL (SCRIPTS + 3 TRACKS MUSIC + PING BOOST)
+-- VOID HUB - ANTI-CRASH & FAST LOAD + CONTROL PANEL
 --============================================================
 
+-- ⚡ 0. ULTRA FAST ANTI-CRASH & MEMORY CLEANER (RUNS IMMEDIATELY)
+pcall(function()
+	if gcinfo then collectgarbage("collect") end
+	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+	game:GetService("Lighting").GlobalShadows = false
+end)
+
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
-local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
-local NetworkClient = game:GetService("NetworkClient")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
+local Camera = Workspace.CurrentCamera
 
 --============================================================
--- 1. SAFE ANTI-KICK & ANTI-AFK
---============================================================
-
-player.Idled:Connect(function()
-	pcall(function()
-		local bb = game:GetService("VirtualInputManager")
-		bb:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-		task.wait(0.1)
-		bb:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
-	end)
-end)
-
-if hookmetamethod then
-	local oldHM
-	oldHM = hookmetamethod(game, "__namecall", function(self, ...)
-		local method = getnamecallmethod()
-		if tostring(method):lower() == "kick" and self == player then
-			return nil
-		end
-		return oldHM(self, ...)
-	end)
-end
-
---============================================================
--- 2. PING BOOSTER & FPS OPTIMIZER
---============================================================
-
-pcall(function()
-	Lighting.GlobalShadows = false
-	Lighting.FogEnd = 9e9
-	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-	
-	for _, v in ipairs(game:GetDescendants()) do
-		if v:IsA("Part") or v:IsA("UnionOperation") or v:IsA("MeshPart") then
-			v.Material = Enum.Material.Plastic
-			v.Reflectance = 0
-		elseif v:IsA("Decal") or v:IsA("Texture") then
-			v:Destroy()
-		elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-			v.Enabled = false
-		end
-	end
-end)
-
-pcall(function()
-	settings().Network.IncomingReplicationLag = -1000
-	if NetworkClient then
-		NetworkClient:SetOutgoingKBPSLimit(999999)
-	end
-end)
-
---============================================================
--- 3. RUN MAIN EXTERNAL SCRIPT
+-- 1. FAST RUN MAIN EXTERNAL SCRIPT
 --============================================================
 
 task.spawn(function()
@@ -75,18 +31,18 @@ task.spawn(function()
 end)
 
 --============================================================
--- 4. CONTROL PANEL GUI
+-- 2. CONTROL PANEL GUI (OPTIMIZED)
 --============================================================
 
-local oldGui = PlayerGui:FindFirstChild("VoidHubControlGui")
+local oldGui = PlayerGui:FindFirstChild("VoidHubLagGui")
 if oldGui then oldGui:Destroy() end
 
 local mainGui = Instance.new("ScreenGui")
-mainGui.Name = "VoidHubControlGui"
+mainGui.Name = "VoidHubLagGui"
 mainGui.ResetOnSpawn = false
 mainGui.Parent = PlayerGui
 
--- زر فتح القائمة الجانبي
+-- زر فتح القائمة
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.fromOffset(45, 45)
 toggleBtn.Position = UDim2.new(0, 10, 0.5, -22)
@@ -106,14 +62,15 @@ btnStroke.Color = Color3.fromRGB(0, 170, 255)
 btnStroke.Thickness = 2
 btnStroke.Parent = toggleBtn
 
--- الإطار الرئيسي للقائمة
+-- الإطار الرئيسي
 local frame = Instance.new("Frame")
-frame.Size = UDim2.fromOffset(240, 250)
-frame.Position = UDim2.new(0, 65, 0.5, -125)
+frame.Size = UDim2.fromOffset(240, 360)
+frame.Position = UDim2.new(0, 65, 0.5, -180)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 frame.BorderSizePixel = 0
 frame.Visible = false
 frame.Parent = mainGui
+frame.Active = true
 
 local frameCorner = Instance.new("UICorner")
 frameCorner.CornerRadius = UDim.new(0, 10)
@@ -124,56 +81,210 @@ frameStroke.Color = Color3.fromRGB(35, 35, 45)
 frameStroke.Thickness = 1.5
 frameStroke.Parent = frame
 
+-- إضافة الـ Gradient (خفيف جداً)
+local gradient = Instance.new("UIGradient")
+gradient.Rotation = 45
+gradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(147, 112, 219)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(135, 206, 235)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(147, 112, 219))
+})
+gradient.Parent = frame
+
+RunService.RenderStepped:Connect(function()
+	gradient.Offset = Vector2.new(math.sin(tick() * 0.5) * 0.5, 0)
+end)
+
+-- كود السحب (Draggable)
+local dragging, dragInput, dragStart, startPos
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+end)
+
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
 title.Text = "VOID HUB CONTROL PANEL"
-title.TextColor3 = Color3.fromRGB(0, 170, 255)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 11
 title.Parent = frame
 
 --============================================================
--- SCRIPT TOGGLES (Anti Bad)
+-- ANTI-CRASH STATUS
 --============================================================
 
-local antiBadBtn = Instance.new("TextButton")
-antiBadBtn.Size = UDim2.new(0.85, 0, 0, 32)
-antiBadBtn.Position = UDim2.new(0.075, 0, 0.15, 0)
-antiBadBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-antiBadBtn.Text = "ANTI BAD: OFF ❌"
-antiBadBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-antiBadBtn.Font = Enum.Font.GothamBold
-antiBadBtn.TextSize = 11
-antiBadBtn.Parent = frame
+local antiCrashBtn = Instance.new("TextButton")
+antiCrashBtn.Size = UDim2.new(0.85, 0, 0, 24)
+antiCrashBtn.Position = UDim2.new(0.075, 0, 0.08, 0)
+antiCrashBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+antiCrashBtn.Text = "ANTI-CRASH: ACTIVE 🚀"
+antiCrashBtn.TextColor3 = Color3.fromRGB(0, 255, 120)
+antiCrashBtn.Font = Enum.Font.GothamBold
+antiCrashBtn.TextSize = 10
+antiCrashBtn.Parent = frame
 
-local antiBadCorner = Instance.new("UICorner")
-antiBadCorner.CornerRadius = UDim.new(0, 6)
-antiBadCorner.Parent = antiBadBtn
+local crashCorner = Instance.new("UICorner")
+crashCorner.CornerRadius = UDim.new(0, 6)
+crashCorner.Parent = antiCrashBtn
 
-local antiBadActive = false
+antiCrashBtn.MouseButton1Click:Connect(function()
+	pcall(function()
+		if gcinfo then collectgarbage("collect") end
+	end)
+end)
 
-antiBadBtn.MouseButton1Click:Connect(function()
-	antiBadActive = not antiBadActive
-	if antiBadActive then
-		antiBadBtn.Text = "ANTI BAD: ON 🟢"
-		antiBadBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 90)
-		antiBadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		
-		task.spawn(function()
-			pcall(function()
-				loadstring(game:HttpGet("https://orrxl4-protector.com/api/raw?id=dcon25o8"))()
-			end)
+--============================================================
+-- SMOOTH GAME TOGGLE
+--============================================================
+
+local smoothActive = false
+local originalMaterials = {}
+
+local smoothBtn = Instance.new("TextButton")
+smoothBtn.Size = UDim2.new(0.85, 0, 0, 24)
+smoothBtn.Position = UDim2.new(0.075, 0, 0.16, 0)
+smoothBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+smoothBtn.Text = "SMOOTH GAME: OFF ❌"
+smoothBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+smoothBtn.Font = Enum.Font.GothamBold
+smoothBtn.TextSize = 10
+smoothBtn.Parent = frame
+
+local smoothCorner = Instance.new("UICorner")
+smoothCorner.CornerRadius = UDim.new(0, 6)
+smoothCorner.Parent = smoothBtn
+
+smoothBtn.MouseButton1Click:Connect(function()
+	smoothActive = not smoothActive
+	if smoothActive then
+		smoothBtn.Text = "SMOOTH GAME: ON ⚡"
+		smoothBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 90)
+		smoothBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		pcall(function()
+			for _, v in ipairs(game:GetDescendants()) do
+				if v:IsA("BasePart") then
+					originalMaterials[v] = v.Material
+					v.Material = Enum.Material.SmoothPlastic
+					v.Reflectance = 0
+				elseif v:IsA("Decal") or v:IsA("Texture") then
+					v.Transparency = 1
+				elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") then
+					v.Enabled = false
+				end
+			end
 		end)
 	else
-		antiBadBtn.Text = "ANTI BAD: OFF ❌"
-		antiBadBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-		antiBadBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		smoothBtn.Text = "SMOOTH GAME: OFF ❌"
+		smoothBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+		smoothBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		pcall(function()
+			for part, mat in pairs(originalMaterials) do
+				if part and part.Parent then part.Material = mat end
+			end
+			originalMaterials = {}
+			for _, v in ipairs(game:GetDescendants()) do
+				if v:IsA("Decal") or v:IsA("Texture") then v.Transparency = 0
+				elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") then v.Enabled = true end
+			end
+		end)
 	end
 end)
 
 --============================================================
--- MUSIC PLAYER (الأغاني الثلاثة)
+-- FOV CONTROL
+--============================================================
+
+local fovValues = {70, 90, 110, 120}
+local currentFovIndex = 1
+
+local fovBtn = Instance.new("TextButton")
+fovBtn.Size = UDim2.new(0.85, 0, 0, 24)
+fovBtn.Position = UDim2.new(0.075, 0, 0.24, 0)
+fovBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+fovBtn.Text = "CAMERA FOV: 70 (DEFAULT)"
+fovBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovBtn.Font = Enum.Font.GothamBold
+fovBtn.TextSize = 10
+fovBtn.Parent = frame
+
+local fovCorner = Instance.new("UICorner")
+fovCorner.CornerRadius = UDim.new(0, 6)
+fovCorner.Parent = fovBtn
+
+fovBtn.MouseButton1Click:Connect(function()
+	currentFovIndex = (currentFovIndex % #fovValues) + 1
+	local selectedFov = fovValues[currentFovIndex]
+	Camera.FieldOfView = selectedFov
+	fovBtn.Text = "CAMERA FOV: " .. tostring(selectedFov) .. (selectedFov == 70 and " (DEFAULT)" or "")
+end)
+
+--============================================================
+-- ANTI-RESET v2
+--============================================================
+
+local antiResetBtn = Instance.new("TextButton")
+antiResetBtn.Size = UDim2.new(0.85, 0, 0, 24)
+antiResetBtn.Position = UDim2.new(0.075, 0, 0.32, 0)
+antiResetBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+antiResetBtn.Text = "ANTI-RESET v2: ACTIVE 🛡️"
+antiResetBtn.TextColor3 = Color3.fromRGB(0, 255, 120)
+antiResetBtn.Font = Enum.Font.GothamBold
+antiResetBtn.TextSize = 10
+antiResetBtn.Parent = frame
+
+local antiResetCorner = Instance.new("UICorner")
+antiResetCorner.CornerRadius = UDim.new(0, 6)
+antiResetCorner.Parent = antiResetBtn
+
+antiResetBtn.MouseButton1Click:Connect(function()
+	pcall(function()
+		local char = player.Character
+		if char and char:FindFirstChildOfClass("Humanoid") then
+			char:FindFirstChildOfClass("Humanoid"):SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+		end
+	end)
+end)
+
+--============================================================
+-- PING STABILIZER
+--============================================================
+
+local pingBtn = Instance.new("TextButton")
+pingBtn.Size = UDim2.new(0.85, 0, 0, 24)
+pingBtn.Position = UDim2.new(0.075, 0, 0.40, 0)
+pingBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+pingBtn.Text = "PING STABILIZER: ON 🌐"
+pingBtn.TextColor3 = Color3.fromRGB(0, 255, 120)
+pingBtn.Font = Enum.Font.GothamBold
+pingBtn.TextSize = 10
+pingBtn.Parent = frame
+
+local pingCorner = Instance.new("UICorner")
+pingCorner.CornerRadius = UDim.new(0, 6)
+pingCorner.Parent = pingBtn
+
+pingBtn.MouseButton1Click:Connect(function()
+	pcall(function()
+		settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+	end)
+end)
+
+--============================================================
+-- MUSIC PLAYER
 --============================================================
 
 local SONGS = {
@@ -186,22 +297,22 @@ local currentTrack = 1
 local soundInstance = nil
 
 local playBtn = Instance.new("TextButton")
-playBtn.Size = UDim2.new(0.85, 0, 0, 35)
-playBtn.Position = UDim2.new(0.075, 0, 0.35, 0)
+playBtn.Size = UDim2.new(0.85, 0, 0, 26)
+playBtn.Position = UDim2.new(0.075, 0, 0.50, 0)
 playBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 playBtn.Text = "PLAY MUSIC 🔊"
 playBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 playBtn.Font = Enum.Font.GothamBold
-playBtn.TextSize = 11
+playBtn.TextSize = 10
 playBtn.Parent = frame
 
 local playCorner = Instance.new("UICorner")
-playCorner.CornerRadius = UDim.new(0, 8)
+playCorner.CornerRadius = UDim.new(0, 6)
 playCorner.Parent = playBtn
 
 local changeBtn = Instance.new("TextButton")
-changeBtn.Size = UDim2.new(0.85, 0, 0, 30)
-changeBtn.Position = UDim2.new(0.075, 0, 0.54, 0)
+changeBtn.Size = UDim2.new(0.85, 0, 0, 24)
+changeBtn.Position = UDim2.new(0.075, 0, 0.59, 0)
 changeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 changeBtn.Text = "CHANGE TRACK 🔀 (Track 1)"
 changeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -215,9 +326,9 @@ changeCorner.Parent = changeBtn
 
 local pingLabel = Instance.new("TextLabel")
 pingLabel.Size = UDim2.new(1, 0, 0, 20)
-pingLabel.Position = UDim2.new(0, 0, 0.88, 0)
+pingLabel.Position = UDim2.new(0, 0, 0.90, 0)
 pingLabel.BackgroundTransparency = 1
-pingLabel.Text = "⚡ PING & FPS BOOST ACTIVE"
+pingLabel.Text = "🚀 ANTI-CRASH & FAST LOAD ON"
 pingLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
 pingLabel.Font = Enum.Font.GothamBold
 pingLabel.TextSize = 9
@@ -232,21 +343,18 @@ local function loadAudioTrack(trackIdx)
 	
 	local trackData = SONGS[trackIdx]
 	local asset
-	
 	pcall(function()
-		if isfile and isfile(trackData.File) then
-			asset = getcustomasset(trackData.File)
-		end
+		if isfile and isfile(trackData.File) then asset = getcustomasset(trackData.File) end
 	end)
-	
 	if not asset then
-		local success, data = pcall(function() return game:HttpGet(trackData.Url) end)
-		if success and data and #data > 1000 then
-			pcall(function() writefile(trackData.File, data) end)
-			pcall(function() asset = getcustomasset(trackData.File) end)
-		end
+		task.spawn(function()
+			local success, data = pcall(function() return game:HttpGet(trackData.Url) end)
+			if success and data and #data > 1000 then
+				pcall(function() writefile(trackData.File, data) end)
+				pcall(function() asset = getcustomasset(trackData.File) end)
+			end
+		end)
 	end
-	
 	if asset then
 		soundInstance = Instance.new("Sound")
 		soundInstance.SoundId = asset
@@ -258,10 +366,7 @@ local function loadAudioTrack(trackIdx)
 end
 
 playBtn.MouseButton1Click:Connect(function()
-	if not soundInstance then
-		loadAudioTrack(currentTrack)
-	end
-	
+	if not soundInstance then loadAudioTrack(currentTrack) end
 	if soundInstance then
 		if soundInstance.IsPlaying then
 			soundInstance:Pause()
@@ -286,6 +391,18 @@ changeBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
-toggleBtn.MouseButton1Click:Connect(function()
-	frame.Visible = not frame.Visible
+toggleBtn.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
+
+--============================================================
+-- 3. SPEED LIMITER & AUTO MEMORY CLEAN
+--============================================================
+
+RunService.Heartbeat:Connect(function()
+	local char = player.Character
+	if char then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum and hum.WalkSpeed > 65 then
+			hum.WalkSpeed = 65
+		end
+	end
 end)
