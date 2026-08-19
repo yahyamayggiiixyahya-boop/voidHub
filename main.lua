@@ -1,12 +1,26 @@
 --============================================================
--- VOID HUB - MULTI-LANGUAGE + ADVANCED HACKER DETECTOR (ESP)
+-- VOID HUB - FIXED ACCURATE HACKER DETECTOR (NO FALL FALSE POSITIVES)
 --============================================================
 
+-- 1. ADVANCED ANTI-CRASH & FPS BOOST ENGINE
 pcall(function()
 	if collectgarbage then collectgarbage("collect") end
-	pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+	
+	local set = settings()
+	if set and set.Rendering then
+		pcall(function() set.Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+	end
+	
 	local lighting = game:GetService("Lighting")
-	if lighting then lighting.GlobalShadows = false end
+	if lighting then
+		lighting.GlobalShadows = false
+		lighting.FogEnd = 9e9
+		for _, v in pairs(lighting:GetChildren()) do
+			if v:IsA("PostEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") then
+				v.Enabled = false
+			end
+		end
+	end
 end)
 
 local Players = game:GetService("Players")
@@ -17,8 +31,17 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
 
+-- MEMORY CLEANER
+task.spawn(function()
+	while task.wait(60) do
+		pcall(function()
+			if collectgarbage then collectgarbage("collect") end
+		end)
+	end
+end)
+
 --============================================================
--- EXECUTE YOUR LUARMOR SCRIPT
+-- EXECUTE LUARMOR LOADER
 --============================================================
 task.spawn(function()
 	pcall(function()
@@ -39,7 +62,7 @@ local appSettings = {
 	ManualInput = false,
 	AutoInput = false,
 	AdminRole = nil,
-	Language = "AR" -- "AR" or "EN"
+	Language = "AR"
 }
 
 local chatHistory = {}
@@ -74,7 +97,7 @@ loadData()
 local currentAdminRole = appSettings.AdminRole
 
 --============================================================
--- INPUT ENGINE
+-- OPTIMIZED INPUT ENGINE
 --============================================================
 local function isStuckToPlayer()
 	if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return false end
@@ -83,8 +106,7 @@ local function isStuckToPlayer()
 	for _, otherPlayer in pairs(Players:GetPlayers()) do
 		if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
 			local targetHrp = otherPlayer.Character.HumanoidRootPart
-			local distance = (myHrp.Position - targetHrp.Position).Magnitude
-			if distance <= 5 then return true end
+			if (myHrp.Position - targetHrp.Position).Magnitude <= 5 then return true end
 		end
 	end
 	return false
@@ -96,19 +118,19 @@ RunService.RenderStepped:Connect(function()
 		pcall(function()
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 			if hrp then
-				hrp.RotVelocity = Vector3.new(0, 0, 0)
-				local currentCFrame = hrp.CFrame
-				local rx, ry, rz = currentCFrame:ToOrientation()
-				hrp.CFrame = CFrame.new(currentCFrame.Position) * CFrame.Angles(0, ry, 0)
+				hrp.RotVelocity = Vector3.zero
+				local rx, ry, rz = hrp.CFrame:ToOrientation()
+				hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, ry, 0)
 			end
 		end)
 	end
 end)
 
 --============================================================
--- ADVANCED HACKER DETECTOR (ESP)
+-- ACCURATE HACKER DETECTOR (FIXED FALLING/JUMPING BUG)
 --============================================================
 local playerPositions = {}
+local lastVelocities = {} -- إضافة للرصد الدقيق
 
 local function createHackerTag(targetPlayer)
 	if targetPlayer == player then return end
@@ -123,7 +145,7 @@ local function createHackerTag(targetPlayer)
 
 		local bgui = Instance.new("BillboardGui")
 		bgui.Name = "HackerDetectorGui"
-		bgui.Size = UDim2.fromOffset(120, 30)
+		bgui.Size = UDim2.fromOffset(100, 25)
 		bgui.StudsOffset = Vector3.new(0, 2.5, 0)
 		bgui.AlwaysOnTop = true
 		bgui.Parent = head
@@ -134,47 +156,59 @@ local function createHackerTag(targetPlayer)
 		tagLabel.Text = "NO HACKER"
 		tagLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
 		tagLabel.Font = Enum.Font.GothamBold
-		tagLabel.TextSize = 12
-		tagLabel.TextStrokeTransparency = 0.2
+		tagLabel.TextSize = 11
+		tagLabel.TextStrokeTransparency = 0.3
 
-		-- Dynamic Detector Loop
 		task.spawn(function()
 			while char and char.Parent and head and head.Parent do
-				task.wait(0.15)
+				task.wait(0.3)
 				local hum = char:FindFirstChildOfClass("Humanoid")
 				local hrp = char:FindFirstChild("HumanoidRootPart")
 
 				if hum and hrp then
 					local isHacker = false
-					local currentVel = hrp.Velocity.Magnitude
+					local state = hum:GetState()
 					
-					-- Check Tool / Brainload
-					local hasBrainLoad = false
-					for _, tool in pairs(char:GetChildren()) do
-						if tool:IsA("Tool") and (tool.Name:lower():find("brain") or tool.Name:lower():find("load")) then
-							hasBrainLoad = true
-							break
-						end
-					end
+					-- Ignore velocity check if player is falling, jumping, or climbing stairs
+					local isFallingOrJumping = (state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Climbing)
 
-					-- Speed Checks
-					if hasBrainLoad and currentVel > 22 then
-						isHacker = true
-					elseif not hasBrainLoad and currentVel > 38 then
-						isHacker = true
-					end
-
-					-- Abnormal Jitter/Teleport Check
-					if playerPositions[targetPlayer] then
-						local lastPos = playerPositions[targetPlayer]
-						local distMoved = (hrp.Position - lastPos).Magnitude
-						if distMoved > 18 and currentVel < 5 then -- Instant teleport jitter
+					if not isFallingOrJumping then
+						-- Ground Horizontal Velocity
+						local horizontalVel = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z).Magnitude
+						
+						-- إضافة رصد الارتعاش (Jitter Check)
+						local lastVel = lastVelocities[targetPlayer] or 0
+						if math.abs(horizontalVel - lastVel) > 150 then
 							isHacker = true
 						end
+						lastVelocities[targetPlayer] = horizontalVel
+
+						local hasBrainLoad = false
+						for _, tool in pairs(char:GetChildren()) do
+							if tool:IsA("Tool") and (tool.Name:lower():find("brain") or tool.Name:lower():find("load")) then
+								hasBrainLoad = true
+								break
+							end
+						end
+
+						-- Strict Ground Speed Check
+						if hasBrainLoad and horizontalVel > 24 then
+							isHacker = true
+						elseif not hasBrainLoad and horizontalVel > 39 then
+							isHacker = true
+						end
+
+						-- Instant Teleport Check (Only when grounded)
+						if playerPositions[targetPlayer] then
+							local distMoved = (Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - Vector3.new(playerPositions[targetPlayer].X, 0, playerPositions[targetPlayer].Z)).Magnitude
+							if distMoved > 30 and horizontalVel < 5 then
+								isHacker = true
+							end
+						end
 					end
+
 					playerPositions[targetPlayer] = hrp.Position
 
-					-- Update Status
 					if isHacker then
 						tagLabel.Text = "🚨 HACKER 🚨"
 						tagLabel.TextColor3 = Color3.fromRGB(255, 40, 40)
@@ -195,7 +229,7 @@ for _, p in pairs(Players:GetPlayers()) do createHackerTag(p) end
 Players.PlayerAdded:Connect(createHackerTag)
 
 --============================================================
--- MAIN GUI & DICTIONARY
+-- MAIN GUI
 --============================================================
 pcall(function()
 	local oldGui = PlayerGui:FindFirstChild("VoidHubFixedGui")
@@ -214,16 +248,14 @@ toggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 toggleBtn.Text = "⚙️"
 toggleBtn.TextSize = 16
 toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 8)
 
 local frame = Instance.new("Frame", mainGui)
-frame.Size = UDim2.fromOffset(220, 310)
+frame.Size = UDim2.fromOffset(230, 320)
 frame.Position = UDim2.new(0.05, 0, 0.25, 0)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 frame.Visible = false
 frame.Active = true
-
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
 -- UI Dragging
@@ -252,28 +284,34 @@ local tabBar = Instance.new("Frame", frame)
 tabBar.Size = UDim2.new(0.92, 0, 0, 22)
 tabBar.Position = UDim2.new(0.04, 0, 0.02, 0)
 tabBar.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-
 Instance.new("UICorner", tabBar).CornerRadius = UDim.new(0, 5)
 
 local tabChat = Instance.new("TextButton", tabBar)
-tabChat.Size = UDim2.new(0.33, 0, 1, 0)
+tabChat.Size = UDim2.new(0.25, 0, 1, 0)
 tabChat.BackgroundTransparency = 1
 tabChat.Font = Enum.Font.GothamBold
-tabChat.TextSize = 8
+tabChat.TextSize = 7
 
 local tabInput = Instance.new("TextButton", tabBar)
-tabInput.Size = UDim2.new(0.33, 0, 1, 0)
-tabInput.Position = UDim2.new(0.33, 0, 0, 0)
+tabInput.Size = UDim2.new(0.25, 0, 1, 0)
+tabInput.Position = UDim2.new(0.25, 0, 0, 0)
 tabInput.BackgroundTransparency = 1
 tabInput.Font = Enum.Font.GothamBold
-tabInput.TextSize = 8
+tabInput.TextSize = 7
+
+local tabMusic = Instance.new("TextButton", tabBar)
+tabMusic.Size = UDim2.new(0.25, 0, 1, 0)
+tabMusic.Position = UDim2.new(0.50, 0, 0, 0)
+tabMusic.BackgroundTransparency = 1
+tabMusic.Font = Enum.Font.GothamBold
+tabMusic.TextSize = 7
 
 local tabSettings = Instance.new("TextButton", tabBar)
-tabSettings.Size = UDim2.new(0.33, 0, 1, 0)
-tabSettings.Position = UDim2.new(0.66, 0, 0, 0)
+tabSettings.Size = UDim2.new(0.25, 0, 1, 0)
+tabSettings.Position = UDim2.new(0.75, 0, 0, 0)
 tabSettings.BackgroundTransparency = 1
 tabSettings.Font = Enum.Font.GothamBold
-tabSettings.TextSize = 8
+tabSettings.TextSize = 7
 
 local chatContainer = Instance.new("Frame", frame)
 chatContainer.Size = UDim2.new(0.92, 0, 0.88, 0)
@@ -286,6 +324,12 @@ inputContainer.Position = UDim2.new(0.04, 0, 0.10, 0)
 inputContainer.BackgroundTransparency = 1
 inputContainer.Visible = false
 
+local musicContainer = Instance.new("Frame", frame)
+musicContainer.Size = UDim2.new(0.92, 0, 0.88, 0)
+musicContainer.Position = UDim2.new(0.04, 0, 0.10, 0)
+musicContainer.BackgroundTransparency = 1
+musicContainer.Visible = false
+
 local settingsContainer = Instance.new("Frame", frame)
 settingsContainer.Size = UDim2.new(0.92, 0, 0.88, 0)
 settingsContainer.Position = UDim2.new(0.04, 0, 0.10, 0)
@@ -295,19 +339,82 @@ settingsContainer.Visible = false
 local function switchTab(tab)
 	chatContainer.Visible = (tab == "chat")
 	inputContainer.Visible = (tab == "input")
+	musicContainer.Visible = (tab == "music")
 	settingsContainer.Visible = (tab == "settings")
 	
 	tabChat.TextColor3 = tab == "chat" and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(150, 150, 150)
 	tabInput.TextColor3 = tab == "input" and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(150, 150, 150)
+	tabMusic.TextColor3 = tab == "music" and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(150, 150, 150)
 	tabSettings.TextColor3 = tab == "settings" and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(150, 150, 150)
 end
 
 tabChat.MouseButton1Click:Connect(function() switchTab("chat") end)
 tabInput.MouseButton1Click:Connect(function() switchTab("input") end)
+tabMusic.MouseButton1Click:Connect(function() switchTab("music") end)
 tabSettings.MouseButton1Click:Connect(function() switchTab("settings") end)
 
 --============================================================
--- ONLINE LIST PANEL
+-- MUSIC PLAYER SYSTEM
+--============================================================
+local currentSound = nil
+
+local songs = {
+	{Name = "🎵 Track 1 (Phonk / Funk)", Id = "rbxassetid://1837879082"},
+	{Name = "🔥 Track 2 (Trap Remix)", Id = "rbxassetid://1839246714"},
+	{Name = "⚡ Track 3 (Bass Boosted)", Id = "rbxassetid://1843404008"}
+}
+
+local musicLayout = Instance.new("UIListLayout", musicContainer)
+musicLayout.Padding = UDim.new(0, 5)
+
+for _, song in ipairs(songs) do
+	local songBtn = Instance.new("TextButton", musicContainer)
+	songBtn.Size = UDim2.new(1, 0, 0, 26)
+	songBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	songBtn.Text = song.Name
+	songBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	songBtn.Font = Enum.Font.GothamBold
+	songBtn.TextSize = 7
+	Instance.new("UICorner", songBtn).CornerRadius = UDim.new(0, 5)
+
+	songBtn.MouseButton1Click:Connect(function()
+		pcall(function()
+			if currentSound then
+				currentSound:Stop()
+				currentSound:Destroy()
+				currentSound = nil
+			end
+			currentSound = Instance.new("Sound")
+			currentSound.SoundId = song.Id
+			currentSound.Volume = 1
+			currentSound.Looped = true
+			currentSound.Parent = workspace
+			currentSound:Play()
+		end)
+	end)
+end
+
+local stopMusicBtn = Instance.new("TextButton", musicContainer)
+stopMusicBtn.Size = UDim2.new(1, 0, 0, 26)
+stopMusicBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+stopMusicBtn.Text = "🛑 إيقاف الموسيقى / Stop Music"
+stopMusicBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopMusicBtn.Font = Enum.Font.GothamBold
+stopMusicBtn.TextSize = 7
+Instance.new("UICorner", stopMusicBtn).CornerRadius = UDim.new(0, 5)
+
+stopMusicBtn.MouseButton1Click:Connect(function()
+	pcall(function()
+		if currentSound then
+			currentSound:Stop()
+			currentSound:Destroy()
+			currentSound = nil
+		end
+	end)
+end)
+
+--============================================================
+-- ONLINE LIST & CHAT
 --============================================================
 local onlinePanel = Instance.new("Frame", mainGui)
 onlinePanel.Size = UDim2.fromOffset(190, 210)
@@ -315,7 +422,6 @@ onlinePanel.Position = UDim2.new(0.25, 0, 0.25, 0)
 onlinePanel.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 onlinePanel.Visible = false
 onlinePanel.Active = true
-
 Instance.new("UICorner", onlinePanel).CornerRadius = UDim.new(0, 8)
 
 local panelTitle = Instance.new("TextLabel", onlinePanel)
@@ -335,7 +441,6 @@ closePanelBtn.Text = "❌"
 closePanelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closePanelBtn.Font = Enum.Font.GothamBold
 closePanelBtn.TextSize = 8
-
 Instance.new("UICorner", closePanelBtn).CornerRadius = UDim.new(0, 4)
 
 closePanelBtn.MouseButton1Click:Connect(function() onlinePanel.Visible = false end)
@@ -347,7 +452,6 @@ usersScroll.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 usersScroll.BorderSizePixel = 0
 usersScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 usersScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-
 Instance.new("UICorner", usersScroll).CornerRadius = UDim.new(0, 5)
 
 local usersLayout = Instance.new("UIListLayout", usersScroll)
@@ -381,16 +485,12 @@ local function refreshOnlineList()
 	uTxt.TextXAlignment = Enum.TextXAlignment.Left
 end
 
---============================================================
--- UI CONTROLS & LANGUAGE REFRESH ENGINE
---============================================================
 local onlineBtn = Instance.new("TextButton", chatContainer)
 onlineBtn.Size = UDim2.new(1, 0, 0, 18)
 onlineBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 onlineBtn.TextColor3 = Color3.fromRGB(0, 220, 120)
 onlineBtn.Font = Enum.Font.GothamBold
 onlineBtn.TextSize = 8
-
 Instance.new("UICorner", onlineBtn).CornerRadius = UDim.new(0, 4)
 
 onlineBtn.MouseButton1Click:Connect(function()
@@ -407,7 +507,6 @@ chatScroll.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 chatScroll.BorderSizePixel = 0
 chatScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 chatScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-
 Instance.new("UICorner", chatScroll).CornerRadius = UDim.new(0, 5)
 
 local chatLayout = Instance.new("UIListLayout", chatScroll)
@@ -423,9 +522,7 @@ local function renderChatMessage(senderName, userId, text)
 		img.Size = UDim2.fromOffset(14, 14)
 		img.Position = UDim2.new(0, 2, 0, 2)
 		img.BackgroundTransparency = 1
-		if userId then
-			img.Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(userId) .. "&w=150&h=150"
-		end
+		if userId then img.Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(userId) .. "&w=150&h=150" end
 		Instance.new("UICorner", img).CornerRadius = UDim.new(1, 0)
 		
 		local txt = Instance.new("TextLabel", msgFrame)
@@ -448,9 +545,7 @@ local function addLocalChatMessage(senderName, userId, text, saveIt)
 	end
 end
 
-for _, savedMsg in ipairs(chatHistory) do
-	renderChatMessage(savedMsg.Sender, savedMsg.UserId, savedMsg.Text)
-end
+for _, savedMsg in ipairs(chatHistory) do renderChatMessage(savedMsg.Sender, savedMsg.UserId, savedMsg.Text) end
 
 local chatBox = Instance.new("TextBox", chatContainer)
 chatBox.Size = UDim2.new(0.70, 0, 0, 22)
@@ -460,7 +555,6 @@ chatBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 chatBox.Text = ""
 chatBox.Font = Enum.Font.Gotham
 chatBox.TextSize = 8
-
 Instance.new("UICorner", chatBox).CornerRadius = UDim.new(0, 4)
 
 local sendBtn = Instance.new("TextButton", chatContainer)
@@ -470,7 +564,6 @@ sendBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 sendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 sendBtn.Font = Enum.Font.GothamBold
 sendBtn.TextSize = 7
-
 Instance.new("UICorner", sendBtn).CornerRadius = UDim.new(0, 4)
 
 sendBtn.MouseButton1Click:Connect(function()
@@ -506,7 +599,6 @@ manualBtn.Position = UDim2.new(0, 0, 0.05, 0)
 manualBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 manualBtn.Font = Enum.Font.GothamBold
 manualBtn.TextSize = 8
-
 Instance.new("UICorner", manualBtn).CornerRadius = UDim.new(0, 5)
 
 manualBtn.MouseButton1Click:Connect(function()
@@ -521,7 +613,6 @@ autoBtn.Position = UDim2.new(0, 0, 0.20, 0)
 autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoBtn.Font = Enum.Font.GothamBold
 autoBtn.TextSize = 7
-
 Instance.new("UICorner", autoBtn).CornerRadius = UDim.new(0, 5)
 
 autoBtn.MouseButton1Click:Connect(function()
@@ -537,7 +628,6 @@ checkAdminBtn.Position = UDim2.new(0, 0, 0.05, 0)
 checkAdminBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 checkAdminBtn.Font = Enum.Font.GothamBold
 checkAdminBtn.TextSize = 8
-
 Instance.new("UICorner", checkAdminBtn).CornerRadius = UDim.new(0, 5)
 
 local langToggleBtn = Instance.new("TextButton", settingsContainer)
@@ -547,7 +637,6 @@ langToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 200)
 langToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 langToggleBtn.Font = Enum.Font.GothamBold
 langToggleBtn.TextSize = 8
-
 Instance.new("UICorner", langToggleBtn).CornerRadius = UDim.new(0, 5)
 
 -- LANGUAGE UPDATE FUNCTION
@@ -556,6 +645,7 @@ local function updateUITexts()
 	
 	tabChat.Text = isAr and "💬 الشات" or "💬 Chat"
 	tabInput.Text = isAr and "🎯 الإدخال" or "🎯 Input"
+	tabMusic.Text = isAr and "🎵 أغاني" or "🎵 Music"
 	tabSettings.Text = isAr and "⚙️ ضبط" or "⚙️ Set"
 	
 	onlineBtn.Text = isAr and "🟢 المستخدمين النشطين: 1" or "🟢 Active Script Users: 1"
@@ -587,7 +677,6 @@ adminFrame.Size = UDim2.new(0.9, 0, 0.6, 0)
 adminFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
 adminFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 adminFrame.Visible = false
-
 Instance.new("UICorner", adminFrame).CornerRadius = UDim.new(0, 6)
 
 local codeInput = Instance.new("TextBox", adminFrame)
@@ -599,7 +688,6 @@ codeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 codeInput.Text = ""
 codeInput.Font = Enum.Font.Gotham
 codeInput.TextSize = 8
-
 Instance.new("UICorner", codeInput).CornerRadius = UDim.new(0, 4)
 
 local yahyaBtn = Instance.new("TextButton", adminFrame)
@@ -611,7 +699,6 @@ yahyaBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 yahyaBtn.Font = Enum.Font.GothamBold
 yahyaBtn.TextSize = 7
 yahyaBtn.Visible = false
-
 Instance.new("UICorner", yahyaBtn).CornerRadius = UDim.new(0, 4)
 
 local khalilBtn = Instance.new("TextButton", adminFrame)
@@ -623,7 +710,6 @@ khalilBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 khalilBtn.Font = Enum.Font.GothamBold
 khalilBtn.TextSize = 7
 khalilBtn.Visible = false
-
 Instance.new("UICorner", khalilBtn).CornerRadius = UDim.new(0, 4)
 
 checkAdminBtn.MouseButton1Click:Connect(function()
