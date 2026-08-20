@@ -237,7 +237,7 @@ do
                 end
             end)
             pcall(function() introDone:Fire() end)
-            -- ðŸ”¥ ESTA ES LA LÃNEA CLAVE QUE FALTABA:
+            -- 🔥 ESTA ES LA LÍNEA CLAVE QUE FALTABA:
             local env = (getgenv and getgenv()) or _G
             env.__MVP_INTRO_FINISHED_RUN = env.__MVP_HIGH_PING_RUN
         end
@@ -336,7 +336,7 @@ do
                 end)
             end)
         end
-        -- Arranca la mÃºsica en cuanto se arma la intro
+        -- Arranca la música en cuanto se arma la intro
         startIntroMusic()
 
         introLayer = Instance.new("Frame")
@@ -350,7 +350,7 @@ do
         introLayer.ZIndex = 1000
         introLayer.Parent = screenGui
 
-        -- BotÃ³n OMITIR (abajo a la derecha)
+        -- Botón OMITIR (abajo a la derecha)
         local skipBtn = Instance.new("TextButton")
         skipBtn.Name = "SkipIntroBtn"
         skipBtn.AnchorPoint = Vector2.new(1, 1)
@@ -459,7 +459,7 @@ do
             label.Position = UDim2.fromScale(0.5, 0.5)
             label.Size = UDim2.new(1, -12, 0, 110)
             label.Font = Enum.Font.GothamBlack
-            label.Text = "â†»  MVP  â†»"
+            label.Text = "↻  MVP  ↻"
             label.TextColor3 = color
             label.TextSize = 58
             label.TextTransparency = transparency
@@ -684,7 +684,7 @@ do
 
         task.spawn(function()
             local ok, err = xpcall(function()
-            -- 1) Todo negro + mÃºsica al ejecutar
+            -- 1) Todo negro + música al ejecutar
             introLayer.BackgroundTransparency = 0
             introLayer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
             introImage.ImageTransparency = 1
@@ -699,7 +699,7 @@ do
             startIntroMusic()
             task.wait(0.25)
 
-            -- 2) Negro â†’ transparente (se va abriendo)
+            -- 2) Negro → transparente (se va abriendo)
             TweenService:Create(introLayer, TweenInfo.new(0.95, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                 BackgroundTransparency = 0.55
             }):Play()
@@ -751,7 +751,7 @@ do
             end
             task.wait(0.50)
 
-            -- Fondo de portada mÃ¡s visible
+            -- Fondo de portada más visible
             TweenService:Create(introLayer, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                 BackgroundColor3 = Color3.fromRGB(8, 0, 0),
                 BackgroundTransparency = 0.28
@@ -783,7 +783,7 @@ do
             glitchBurst(10, 0.16)
             task.wait(0.08)
 
-            -- Cierre rÃ¡pido
+            -- Cierre rápido
             glitchBurst(14, 0.18)
             TweenService:Create(introContent, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
                 Size = UDim2.new(1.10, 0, 0, 208)
@@ -1226,4 +1226,4 @@ State._resolveFileFunction = function(name)
 
 	local environments = {}
 	pcall(function()
-		if getgenv then table.insert(e
+		if getgenv then table.insert(environments, g
